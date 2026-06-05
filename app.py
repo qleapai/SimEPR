@@ -39,8 +39,10 @@ from epr_simfit.spin_models import Nucleus, SpinComponent
 APP_DIR = Path(__file__).resolve().parent
 WHITE_PAPER = APP_DIR / "docs" / "WHITE_PAPER.md"
 CITATION = APP_DIR / "CITATION.cff"
+LOGO     = APP_DIR / "assets" / "logo.svg"
+LOGO_BANNER = APP_DIR / "assets" / "logo_banner.svg"
 
-st.set_page_config(page_title="SimEPR", layout="wide")
+st.set_page_config(page_title="SimEPR", page_icon="⚛️", layout="wide")
 
 st.markdown(
     """
@@ -135,7 +137,11 @@ def apply_component_edits(selected_ids: list[str], edited: pd.DataFrame, custom_
     return components
 
 
-st.title("SimEPR")
+# ── Header banner ────────────────────────────────────────────────────────────
+if LOGO_BANNER.exists():
+    st.image(str(LOGO_BANNER), use_container_width=True)
+else:
+    st.title("SimEPR")
 st.caption("General high-field cw-EPR simulation, fitting, model comparison, and publication-ready export.")
 st.markdown(f"<div class='credit-note'>{SHORT_CREDIT}</div>", unsafe_allow_html=True)
 st.markdown(
@@ -146,6 +152,9 @@ st.markdown(
 )
 
 with st.sidebar:
+    # Logo in sidebar
+    if LOGO.exists():
+        st.image(str(LOGO), width=120)
     st.header("Experiment metadata")
     project_title = st.text_input("Project title", value="Untitled EPR study")
     sample_name = st.text_input("Sample name", value="Sample 1")

@@ -1,12 +1,21 @@
-# SimEPR
+<p align="center">
+  <img src="assets/logo_banner.svg" alt="SimEPR — Open EPR Simulation & Fitting" width="100%"/>
+</p>
 
-SimEPR is a public-distributable Streamlit GUI for general high-field cw-EPR spectrum import, preprocessing, simulation, fitting, model comparison, and export.
+<p align="center">
+  <a href="https://opensource.org/licenses/MIT"><img src="https://img.shields.io/badge/License-MIT-blue.svg" alt="MIT License"/></a>
+  <img src="https://img.shields.io/badge/Python-3.11+-3776ab?logo=python&logoColor=white" alt="Python 3.11+"/>
+  <img src="https://img.shields.io/badge/Streamlit-1.31+-ff4b4b?logo=streamlit&logoColor=white" alt="Streamlit"/>
+  <img src="https://img.shields.io/badge/EPR-Simulation-2563eb" alt="EPR"/>
+</p>
 
-It is designed for flexible chemistry: users can enter any solvent or matrix, any catalyst/material combination, any gas/atmosphere, custom reaction conditions, additives, spin probes, and user-defined spectral components.
+---
+
+**SimEPR** is a free, open-source Streamlit GUI for cw-EPR spectrum simulation, fitting, model comparison, and publication-ready export. It is designed for any solvent/matrix, catalyst/material, atmosphere, spin probe, or reaction condition.
 
 ## Scientific Scope
 
-SimEPR implements high-field isotropic cw-EPR simulations using derivative Lorentzian, Gaussian, and pseudo-Voigt line shapes. It supports mixture fitting, common isotropic hyperfine patterns, model comparison, and transparent export of all fitted metrics and plotted data.
+SimEPR implements **isotropic high-field cw-EPR simulation** using derivative Lorentzian, Gaussian, and pseudo-Voigt lineshapes. It supports multi-component mixture fitting, common hyperfine patterns (¹H, ¹⁴N, ¹⁵N, ⁶³Cu, ⁵⁵Mn, ⁵¹V), model comparison by BIC/AIC, detected intermediate/radical assignment, and transparent export of all fitted metrics and plotted data.
 
 SimEPR is not a substitute for full anisotropic tensor analysis. Powder spectra, g/A anisotropy, exchange, saturation, relaxation, orientation selection, and multi-frequency global fits require specialist EPR methods.
 
