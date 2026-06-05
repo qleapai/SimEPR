@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+message: "If you use SimEPR, please cite this software and the accompanying white paper."
+title: "SimEPR: A Public General-Purpose GUI for High-Field cw-EPR Simulation, Fitting, and Transparent Export"
+version: "0.1.0"
+date-released: "2026-06-05"
+authors:
+  - family-names: "Khan"
+    given-names: "Md Sakib Hasan"
+    affiliation: "Research School of Chemistry, The Australian National University; Department of Electrical and Electronic Engineering, Khulna University of Engineering & Technology"
+license: "MIT"
+keywords:
+  - EPR
+  - ESR
+  - cw-EPR
+  - spectral fitting
+  - spin trapping
+  - radical chemistry
+  - Streamlit
+abstract: "SimEPR is a public-distributable high-field cw-EPR simulation and fitting GUI for importing spectra, fitting isotropic mixture models, comparing candidate components, and exporting all fitted metrics and plotted data."
