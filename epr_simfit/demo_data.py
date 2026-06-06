@@ -15,14 +15,7 @@ DEMO_CONDITIONS = {
     "demo_generic_organic_radical.asc": ("generic_organic_radical", "G1_organic_radicals", {"organic_radical_singlet": 0.55, "carbon_centered_h": 0.30, "semiquinone_radical": 0.15}),
     "demo_generic_nitroxide_spin_label.asc": ("generic_nitroxide_spin_label", "G2_nitroxide_spin_label", {"nitroxide_14n": 0.80, "triphenylmethyl_trityl": 0.06}),
     "demo_generic_cu_mn_screen.asc": ("generic_cu_mn_screen", "G4_transition_metal_screen", {"cu2_isotropic": 0.55, "mn2_sixline": 0.20}),
-    "demo_PBN_DMSO_water_light_blank.asc": ("PBN_DMSO_water_light_blank", "M1_water_dmso", {"ov_broad_background": 0.02, "pbn_oh": 0.30, "pbn_ch3_dmso": 0.55}),
-    "demo_PdOvBMO_N2_dark.asc": ("PdOvBMO_N2_dark", "M1_water_dmso", {"ov_broad_background": 0.25, "pbn_oh": 0.10, "pbn_ch3_dmso": 0.22}),
-    "demo_PdOvBMO_Ar_light.asc": ("PdOvBMO_Ar_light", "M2_water_dmso_o2", {"ov_broad_background": 0.18, "pbn_oh": 0.22, "pbn_ch3_dmso": 0.42, "pbn_ooh_o2minus": 0.10}),
-    "demo_PdOvBMO_air_light.asc": ("PdOvBMO_air_light", "M2_water_dmso_o2", {"ov_broad_background": 0.15, "pbn_oh": 0.16, "pbn_ch3_dmso": 0.25, "pbn_ooh_o2minus": 0.65}),
-    "demo_PdOvBMO_N2_light.asc": ("PdOvBMO_N2_light", "M3_n2rr_candidate", {"ov_broad_background": 0.18, "pbn_oh": 0.20, "pbn_ch3_dmso": 0.38, "pbn_ooh_o2minus": 0.06, "pbn_nnh_candidate": 0.20, "pbn_nh2_candidate": 0.12}),
-    "demo_BMO_N2_light.asc": ("BMO_N2_light", "M1_water_dmso", {"ov_broad_background": 0.08, "pbn_oh": 0.18, "pbn_ch3_dmso": 0.28}),
-    "demo_OvBMO_N2_light.asc": ("OvBMO_N2_light", "M3_n2rr_candidate", {"ov_broad_background": 0.14, "pbn_oh": 0.20, "pbn_ch3_dmso": 0.34, "pbn_ooh_o2minus": 0.04, "pbn_nnh_candidate": 0.08, "pbn_nh2_candidate": 0.04}),
-    "demo_PdBMO_N2_light.asc": ("PdBMO_N2_light", "M3_n2rr_candidate", {"ov_broad_background": 0.12, "pbn_oh": 0.20, "pbn_ch3_dmso": 0.33, "pbn_ooh_o2minus": 0.05, "pbn_nnh_candidate": 0.07, "pbn_nh2_candidate": 0.05}),
+    "demo_PBN_DMSO_water_light_blank.asc": ("PBN_DMSO_water_light_blank", "M1_water_dmso", {"pbn_oh": 0.30, "pbn_ch3_dmso": 0.55}),
 }
 
 
