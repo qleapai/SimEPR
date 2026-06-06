@@ -1,4 +1,3 @@
-#!/usr/bin/env bash
-set -euo pipefail
+#!/bin/bash
 cd "$(dirname "$0")"
-python3.11 -m streamlit run app.py --server.port 8502
+.venv/bin/streamlit run app.py --server.port 8502

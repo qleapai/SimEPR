@@ -1,3 +1,4 @@
 @echo off
 cd /d "%~dp0"
-py -3.11 -m streamlit run app.py --server.port 8502
+echo Starting SimEPR (E-drive venv)...
+".venv\Scripts\streamlit.exe" run app.py --server.port 8502
