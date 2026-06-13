@@ -193,7 +193,105 @@ def default_components() -> dict[str, SpinComponent]:
             interpretation="Oxygen contamination / superoxide / hydroperoxyl.",
         ),
     }
+    comps.update(anisotropic_components())
     return comps
+
+
+def anisotropic_components() -> dict[str, SpinComponent]:
+    """Tensor-resolved / high-spin component models simulated by the powder engine.
+
+    These use anisotropic g and A tensors, electron spin S, and zero-field
+    splitting (D, E).  They are solved by full spin-Hamiltonian diagonalisation
+    with orientation (powder) averaging, valid for frozen-solution, powder, and
+    solid-state cw-EPR spectra.
+    """
+    return {
+        "nitroxide_aniso": SpinComponent(
+            component_id="nitroxide_aniso",
+            display_name="Nitroxide (rigid-limit, anisotropic g/A)",
+            radical_assignment="nitroxide spin label (powder)",
+            category="anisotropic radical",
+            g=2.0059, spin_S=0.5,
+            g_tensor=(2.00906, 2.00617, 2.00220),
+            nuclei=[Nucleus(isotope="14N", A_mT=1.10, label="14N",
+                            A_tensor_mT=(0.62, 0.62, 3.62))],
+            linewidth_mT=0.20, linewidth_bounds=(0.05, 2.00),
+            eta=0.40, weight=0.4,
+            interpretation="Rigid-limit nitroxide with rhombic g and axial 14N hyperfine; frozen-solution powder pattern.",
+            warning="Powder/rigid-limit model; for fast-tumbling solution use the isotropic nitroxide instead.",
+        ),
+        "cu2_axial": SpinComponent(
+            component_id="cu2_axial",
+            display_name="Cu(II) axial (g-parallel/perp, 63Cu A-parallel)",
+            radical_assignment="Cu(II) (axial powder)",
+            category="anisotropic metal",
+            g=2.12, spin_S=0.5,
+            g_tensor=(2.060, 2.060, 2.270),
+            nuclei=[Nucleus(isotope="63Cu", A_mT=1.5, label="63Cu",
+                            A_tensor_mT=(1.0, 1.0, 16.5))],
+            linewidth_mT=1.20, linewidth_bounds=(0.20, 8.00),
+            eta=0.50, weight=0.4,
+            interpretation="Axial Cu(II) with g-parallel > g-perp and resolved parallel 63Cu hyperfine; classic square-planar/tetragonal powder pattern.",
+            warning="Cu(II) tensors vary with coordination; refine against standards.",
+        ),
+        "fe3_highspin": SpinComponent(
+            component_id="fe3_highspin",
+            display_name="Fe(III) high-spin (S=5/2, g≈2 + ZFS)",
+            radical_assignment="high-spin Fe(III)",
+            category="high-spin metal",
+            g=2.00, spin_S=2.5,
+            g_tensor=(2.00, 2.00, 2.00),
+            D_MHz=3000.0, E_MHz=300.0,
+            nuclei=[],
+            linewidth_mT=3.00, linewidth_bounds=(0.50, 20.00),
+            eta=0.60, weight=0.3,
+            interpretation="High-spin Fe(III) (S=5/2) with zero-field splitting; effective g≈2, 4.3 features depend on E/D.",
+            warning="High-spin ZFS systems are orientation-rich; increase powder orientations for converged patterns.",
+        ),
+        "mn2_aqueous": SpinComponent(
+            component_id="mn2_aqueous",
+            display_name="Mn(II) aqueous (S=5/2, 55Mn sextet + ZFS)",
+            radical_assignment="Mn(II) (S=5/2)",
+            category="high-spin metal",
+            g=2.00, spin_S=2.5,
+            g_tensor=(2.00, 2.00, 2.00),
+            D_MHz=250.0, E_MHz=50.0,
+            nuclei=[Nucleus(isotope="55Mn", A_mT=9.5, label="55Mn",
+                            A_tensor_mT=(9.5, 9.5, 9.5))],
+            linewidth_mT=0.80, linewidth_bounds=(0.10, 5.00),
+            eta=0.55, weight=0.3,
+            interpretation="Aqueous/solid Mn(II) six-line pattern from the central -1/2<->+1/2 transition with weak ZFS broadening of outer lines.",
+            warning="Full Mn(II) fine structure needs many orientations; central sextet dominates at X-band.",
+        ),
+        "triplet_organic": SpinComponent(
+            component_id="triplet_organic",
+            display_name="Organic triplet / biradical (S=1, ZFS D,E)",
+            radical_assignment="triplet state (S=1)",
+            category="high-spin organic",
+            g=2.003, spin_S=1.0,
+            g_tensor=(2.003, 2.003, 2.003),
+            D_MHz=1000.0, E_MHz=100.0,
+            nuclei=[],
+            linewidth_mT=1.00, linewidth_bounds=(0.20, 10.00),
+            eta=0.50, weight=0.3,
+            interpretation="Photoexcited/ground-state triplet or strongly-coupled biradical with dipolar zero-field splitting (Pake-like powder pattern).",
+            warning="D and E set the line spacing; half-field (delta-Ms=2) transitions are not included in this X-band window.",
+        ),
+        "vo2_axial": SpinComponent(
+            component_id="vo2_axial",
+            display_name="VO2+ vanadyl axial (anisotropic g/51V)",
+            radical_assignment="VO2+ / V(IV) (axial powder)",
+            category="anisotropic metal",
+            g=1.97, spin_S=0.5,
+            g_tensor=(1.984, 1.984, 1.943),
+            nuclei=[Nucleus(isotope="51V", A_mT=6.0, label="51V",
+                            A_tensor_mT=(6.3, 6.3, 17.0))],
+            linewidth_mT=0.80, linewidth_bounds=(0.10, 6.00),
+            eta=0.50, weight=0.3,
+            interpretation="Axial vanadyl with g-perp > g-parallel and large parallel 51V hyperfine; eight-line anisotropic powder pattern.",
+            warning="Vanadyl tensors are coordination-sensitive; refine against authentic complexes.",
+        ),
+    }
 
 
 MODEL_PRESETS: dict[str, list[str]] = {
@@ -206,6 +304,13 @@ MODEL_PRESETS: dict[str, list[str]] = {
     "M1_water_dmso": ["pbn_oh", "pbn_ch3_dmso"],
     "M2_water_dmso_o2": ["pbn_oh", "pbn_ch3_dmso", "pbn_ooh_o2minus"],
     "M3_ros_spin_trap_full": ["defect_broad_general", "pbn_oh", "pbn_ch3_dmso", "pbn_ooh_o2minus"],
+    # ── Anisotropic / high-spin (powder) presets ──
+    "A1_nitroxide_rigid": ["nitroxide_aniso"],
+    "A2_cu_axial": ["cu2_axial"],
+    "A3_vanadyl_axial": ["vo2_axial"],
+    "A4_highspin_fe3": ["fe3_highspin"],
+    "A5_mn2_highspin": ["mn2_aqueous"],
+    "A6_organic_triplet": ["triplet_organic"],
 }
 
 MODEL_DESCRIPTIONS: dict[str, str] = {
@@ -218,6 +323,12 @@ MODEL_DESCRIPTIONS: dict[str, str] = {
     "M1_water_dmso": "PBN water/DMSO model with mandatory PBN-CH3 when PBN is introduced in DMSO.",
     "M2_water_dmso_o2": "PBN water/DMSO/O2 model including PBN-OOH/O2-derived adducts.",
     "M3_ros_spin_trap_full": "Full ROS spin-trap model with broad background, hydroxyl, DMSO, and O2 components.",
+    "A1_nitroxide_rigid": "Rigid-limit nitroxide powder pattern (rhombic g, axial 14N) for frozen solutions.",
+    "A2_cu_axial": "Axial Cu(II) powder pattern with resolved parallel 63Cu hyperfine.",
+    "A3_vanadyl_axial": "Axial VO2+/V(IV) vanadyl eight-line anisotropic powder pattern.",
+    "A4_highspin_fe3": "High-spin Fe(III) (S=5/2) with zero-field splitting.",
+    "A5_mn2_highspin": "High-spin Mn(II) (S=5/2) six-line central transition with ZFS.",
+    "A6_organic_triplet": "Organic triplet / biradical (S=1) dipolar zero-field-split powder pattern.",
 }
 
 

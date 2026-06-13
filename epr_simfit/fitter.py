@@ -129,21 +129,27 @@ def fit_spectrum(
     mode: str = "weights only",
     baseline_order: int = 0,
     max_nfev: int = 400,
+    n_orientations: int = 600,
 ) -> FitResult:
     field = np.asarray(field_mT, dtype=float)
     y = np.asarray(intensity, dtype=float)
     components = [c.clone() for c in (components or components_for_preset(preset))]
     x0, lo, hi, spec = _pack_initial(components, mode, baseline_order)
 
+    # Anisotropic components are expensive: use a reduced orientation grid during
+    # the iterative fit, then a final pass at the requested resolution.
+    any_aniso = any(c.is_anisotropic() for c in components)
+    fit_orient = min(n_orientations, 400) if any_aniso else n_orientations
+
     def residual_fn(x: np.ndarray) -> np.ndarray:
         local_components = [c.clone() for c in components]
         weights, b0, b1 = _apply_params(local_components, x, spec)
-        yhat, _ = simulate_model(field, local_components, weights, mw_frequency_GHz, b0, b1)
+        yhat, _ = simulate_model(field, local_components, weights, mw_frequency_GHz, b0, b1, n_orientations=fit_orient)
         return yhat - y
 
     result = least_squares(residual_fn, np.asarray(x0), bounds=(np.asarray(lo), np.asarray(hi)), max_nfev=max_nfev)
     weights, baseline0, baseline1 = _apply_params(components, result.x, spec)
-    yhat, curves = simulate_model(field, components, weights, mw_frequency_GHz, baseline0, baseline1)
+    yhat, curves = simulate_model(field, components, weights, mw_frequency_GHz, baseline0, baseline1, n_orientations=n_orientations)
     residual = y - yhat
     params = []
     for value, lower, upper, (cid, param, _) in zip(result.x, lo, hi, spec):

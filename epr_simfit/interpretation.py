@@ -366,29 +366,39 @@ SCIENCE_PREPROCESS = """
 """
 
 SCIENCE_MODELBUILDER = """
-**Isotropic cw-EPR simulation**
+**cw-EPR simulation — two engines, automatically selected**
 
-SimEPR uses a **high-field isotropic model** valid for freely tumbling radicals in solution or
-highly symmetric solid-state centres.  Anisotropic tensors (powder spectra, frozen glasses,
-single crystals) require specialist treatment (EasySpin, Pepper, etc.).
+SimEPR routes each component to the engine matching its physics:
 
-**Resonance field for each component:**
+**1. Fast isotropic engine** — for freely tumbling radicals in solution (g and A scalar).
+Resonance field per hyperfine line:
 
-> B₀ (mT) = ν (GHz) / (g × 13.9962) × 1000
+> B₀ (mT) = ν (GHz) / (g × 13.99624) × 1000
 
-**Hyperfine splitting:** A nucleus of spin I splits the resonance into 2I + 1 equally spaced
-lines (spacing = A in mT).  n equivalent nuclei yield 2nI + 1 lines with binomial intensities.
-Nuclei with known EPR-relevant spins: ¹H (I = ½), ¹⁴N (I = 1), ¹⁵N (I = ½), ⁶³Cu (I = 3/2),
-⁵⁵Mn (I = 5/2), ⁵¹V (I = 7/2).
+A nucleus of spin I splits the resonance into 2I + 1 equally spaced lines (spacing = A).
 
-**Lineshape:** Each line is a **pseudo-Voigt** function:
+**2. General anisotropic engine** — full **spin-Hamiltonian diagonalisation** with **powder
+averaging**, automatically used when the component has an anisotropic g-tensor (gx≠gy≠gz),
+anisotropic hyperfine A-tensor, electron spin **S > ½**, or **zero-field splitting** (D, E).
+The Hamiltonian (in frequency units) is:
 
-> S(B) = η · Lorentzian(B, ΔBpp) + (1 − η) · Gaussian(B, ΔBpp)
+> H/h = (μ_B/h) **B**·**g**·**S**  +  Σ_k **S**·**A**_k·**I**_k  +  D(S_z² − S(S+1)/3) + E(S_x² − S_y²)
 
-η = 1 → pure Lorentzian (exchange-narrowed); η = 0 → pure Gaussian (inhomogeneous broadening).
+For each molecular orientation, H(B) is diagonalised and EPR-allowed transitions are located
+where an eigenstate gap equals hν; resonance fields are refined by bisection and weighted by the
+orientation-dependent transition probability. Sticks from a near-uniform spherical grid
+(Fibonacci) are accumulated and broadened. This is valid for **frozen solutions, powders,
+rigid-limit nitroxides, transition-metal ions, and high-spin systems with zero-field splitting**.
 
-**Multi-component:** the total spectrum is the weighted sum of all component spectra.
-Weights represent relative spin concentrations (not absolute).
+**Multifrequency:** because the engine diagonalises the field-dependent Hamiltonian, anisotropic
+patterns correctly scale with microwave frequency (X-, Q-, W-band).
+
+**Supported nuclei:** ¹H, ²H, ¹³C, ¹⁴N, ¹⁵N, ¹⁹F, ³¹P, ²⁷Al, ⁵¹V, ⁵⁵Mn, ⁶³Cu, ⁶⁵Cu.
+
+**Lineshape:** pseudo-Voigt broadening, S(B) = η·Lorentzian + (1−η)·Gaussian.
+
+**Multi-component:** the total spectrum is the weighted sum of all component spectra; weights
+represent relative spin concentrations (not absolute).
 """
 
 SCIENCE_FIT = """

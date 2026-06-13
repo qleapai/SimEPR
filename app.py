@@ -137,6 +137,47 @@ def apply_component_edits(selected_ids: list[str], edited: pd.DataFrame, custom_
     return components
 
 
+def anisotropic_editor_frame(components: list[SpinComponent]) -> pd.DataFrame:
+    """Build the editable anisotropic-parameter table for the selected components."""
+    rows = []
+    for comp in components:
+        gx, gy, gz = comp.g_principal()
+        rows.append({
+            "component ID": comp.component_id,
+            "S (spin)": float(comp.spin_S),
+            "gx": round(gx, 5),
+            "gy": round(gy, 5),
+            "gz": round(gz, 5),
+            "D (MHz)": float(comp.D_MHz),
+            "E (MHz)": float(comp.E_MHz),
+            "mode": comp.mode,
+        })
+    cols = ["component ID", "S (spin)", "gx", "gy", "gz", "D (MHz)", "E (MHz)", "mode"]
+    return pd.DataFrame(rows, columns=cols)
+
+
+def apply_anisotropic_edits(components: list[SpinComponent], edited: pd.DataFrame) -> list[SpinComponent]:
+    """Apply anisotropic (g-tensor, S, D, E, mode) edits to the selected components."""
+    by_id = {c.component_id: c for c in components}
+    for _, row in edited.iterrows():
+        cid = row.get("component ID")
+        comp = by_id.get(cid)
+        if comp is None:
+            continue
+        try:
+            comp.spin_S = float(row.get("S (spin)", comp.spin_S))
+            gx = float(row.get("gx")); gy = float(row.get("gy")); gz = float(row.get("gz"))
+            comp.g_tensor = (gx, gy, gz)
+            comp.g = (gx + gy + gz) / 3.0
+            comp.D_MHz = float(row.get("D (MHz)", comp.D_MHz))
+            comp.E_MHz = float(row.get("E (MHz)", comp.E_MHz))
+            mode = str(row.get("mode", comp.mode)).strip().lower()
+            comp.mode = mode if mode in ("auto", "isotropic", "powder") else "auto"
+        except (TypeError, ValueError):
+            continue
+    return components
+
+
 # ── Header banner ────────────────────────────────────────────────────────────
 if LOGO_BANNER.exists():
     st.image(str(LOGO_BANNER), use_container_width=True)
@@ -180,9 +221,19 @@ with st.sidebar:
     st.header("Data")
     uploaded = st.file_uploader("Upload EPR file", type=["asc", "txt", "dat", "csv"])
     demo_choice = st.selectbox("Or load demo", ["none"] + list(DEMO_CONDITIONS.keys()), index=0)
-    mw_freq = st.number_input("Microwave frequency / GHz", min_value=1.0, max_value=300.0, value=DEFAULT_MW_FREQUENCY_GHZ, step=0.01)
+    mw_freq = st.number_input("Microwave frequency / GHz", min_value=1.0, max_value=300.0, value=DEFAULT_MW_FREQUENCY_GHZ, step=0.01,
+                              help="X-band ≈ 9.4 GHz, Q-band ≈ 34 GHz, W-band ≈ 94 GHz. Multifrequency-aware: anisotropic patterns scale with frequency.")
     field_unit = st.selectbox("Field unit", ["Auto", "Gauss", "mT"], index=0)
     advanced = st.checkbox("Advanced fitting controls", value=False)
+    st.divider()
+    st.header("Powder engine")
+    powder_quality = st.select_slider(
+        "Orientation accuracy",
+        options=["Fast (600)", "Standard (1000)", "High (2000)", "Very high (4000)"],
+        value="Standard (1000)",
+        help="Orientations for powder averaging of anisotropic / high-spin components. More = smoother, slower.",
+    )
+    n_orient = {"Fast (600)": 600, "Standard (1000)": 1000, "High (2000)": 2000, "Very high (4000)": 4000}[powder_quality]
 
 file_text, filename = uploaded_text(uploaded)
 if file_text is None and demo_choice != "none":
@@ -439,11 +490,46 @@ with tabs[3]:
     edit_cols = ["component ID", "name", "category", "g", "linewidth mT", "eta", "weight", "interpretation", "warning"]
     edited = st.data_editor(pd.DataFrame(rows, columns=edit_cols), disabled=["component ID", "name", "category", "interpretation", "warning"], width="stretch")
     selected_components = apply_component_edits(selected_ids, edited, custom_components)
+
+    # ── Anisotropic / high-spin parameters (tensor g, S, zero-field splitting) ──
+    with st.expander("⚛ Anisotropic / high-spin parameters (g-tensor, spin S, zero-field splitting)", expanded=False):
+        st.markdown(
+            "Set the **g-tensor** principal values (gx, gy, gz), electron **spin S**, and "
+            "**zero-field splitting** D, E (MHz) for rigid-limit, powder, frozen-solution, and "
+            "high-spin systems. When gx≠gy≠gz, S>½, or D/E≠0, the component is solved by full "
+            "spin-Hamiltonian diagonalisation with powder averaging. "
+            "`mode`: *auto* (detect), *isotropic* (force fast path), *powder* (force averaging)."
+        )
+        if selected_components:
+            aniso_frame = anisotropic_editor_frame(selected_components)
+            aniso_edited = st.data_editor(
+                aniso_frame, disabled=["component ID"], width="stretch", key="aniso_editor",
+                column_config={
+                    "S (spin)": st.column_config.NumberColumn(help="Electron spin: 0.5, 1, 1.5, 2, 2.5 ...", min_value=0.5, max_value=3.5, step=0.5),
+                    "D (MHz)": st.column_config.NumberColumn(help="Axial zero-field splitting (S>1/2 only)"),
+                    "E (MHz)": st.column_config.NumberColumn(help="Rhombic zero-field splitting (|E/D| ≤ 1/3)"),
+                },
+            )
+            selected_components = apply_anisotropic_edits(selected_components, aniso_edited)
+            _any_aniso = any(c.is_anisotropic() for c in selected_components)
+            if _any_aniso:
+                st.info(f"Powder averaging active for anisotropic/high-spin components ({n_orient} orientations). "
+                        "Increase orientation accuracy in the sidebar for smoother patterns.")
+        else:
+            st.caption("Select components above to edit their anisotropic parameters.")
+
     if parsed is not None and prep is not None and selected_components:
         weights = {component.component_id: component.weight for component in selected_components}
-        sim_total, sim_curves = simulate_model(prep.field_mT, selected_components, weights=weights, mw_frequency_GHz=mw_freq)
+        _need_powder = any(c.is_anisotropic() for c in selected_components)
+        if _need_powder:
+            with st.spinner(f"Simulating powder pattern ({n_orient} orientations)..."):
+                sim_total, sim_curves = simulate_model(prep.field_mT, selected_components, weights=weights, mw_frequency_GHz=mw_freq, n_orientations=n_orient)
+        else:
+            sim_total, sim_curves = simulate_model(prep.field_mT, selected_components, weights=weights, mw_frequency_GHz=mw_freq, n_orientations=n_orient)
         # Cache for auto-alignment in the Preprocess tab
         st.session_state["sim_preview"] = (prep.field_mT.copy(), sim_total.copy())
+        st.session_state["selected_components"] = selected_components
+        st.session_state["n_orient"] = n_orient
         traces = {"experimental processed": prep.processed, "simulation total": sim_total}
         traces.update({cid: weights.get(cid, 1.0) * curve for cid, curve in sim_curves.items()})
         st.plotly_chart(spectrum_figure(prep.field_mT, traces, "Manual simulation"), width="stretch")
@@ -513,6 +599,7 @@ with tabs[4]:
                     mode=mode,
                     baseline_order=int(baseline_order),
                     max_nfev=int(max_eval),
+                    n_orientations=st.session_state.get("n_orient", 1000),
                 )
                 # Re-evaluate on FULL grid for display (masked fit gives parameters only)
                 if _n_excl > 0:
@@ -626,6 +713,7 @@ with tabs[4]:
                                 preset=preset, components=_extended_comps,
                                 mw_frequency_GHz=mw_freq, mode=mode,
                                 baseline_order=int(baseline_order), max_nfev=int(max_eval),
+                                n_orientations=st.session_state.get("n_orient", 1000),
                             )
                             if _n_excl > 0:
                                 from dataclasses import replace as _dc_replace

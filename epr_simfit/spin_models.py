@@ -30,12 +30,21 @@ class Nucleus(BaseModel):
     A_mT: float
     label: str = ""
     bounds: tuple[float, float] | None = None
+    # Optional anisotropic hyperfine principal values (mT). When set, these
+    # override the isotropic A_mT in the anisotropic engine.
+    A_tensor_mT: tuple[float, float, float] | None = None
+    A_euler_deg: tuple[float, float, float] = (0.0, 0.0, 0.0)
 
     @property
     def spin(self) -> float:
         if self.isotope not in NUCLEAR_SPINS:
             raise ValueError(f"Unsupported nucleus isotope: {self.isotope}")
         return NUCLEAR_SPINS[self.isotope]
+
+    def A_principal_mT(self) -> tuple[float, float, float]:
+        if self.A_tensor_mT is not None:
+            return tuple(float(a) for a in self.A_tensor_mT)  # type: ignore[return-value]
+        return (float(self.A_mT), float(self.A_mT), float(self.A_mT))
 
 
 class SpinComponent(BaseModel):
@@ -53,6 +62,38 @@ class SpinComponent(BaseModel):
     weight: float = 1.0
     interpretation: str = ""
     warning: str = ""
+    # ── Anisotropic / high-spin extensions (all optional, isotropic by default) ──
+    spin_S: float = 0.5
+    g_tensor: tuple[float, float, float] | None = None  # (gx, gy, gz)
+    D_MHz: float = 0.0                                   # axial zero-field splitting
+    E_MHz: float = 0.0                                   # rhombic zero-field splitting
+    mode: str = "auto"   # "auto" | "isotropic" | "powder"
+
+    def is_anisotropic(self) -> bool:
+        """True when tensor anisotropy, high spin, or ZFS makes the full engine required."""
+        if self.mode == "powder":
+            return True
+        if self.mode == "isotropic":
+            return False
+        if self.spin_S > 0.5:
+            return True
+        if self.D_MHz != 0.0 or self.E_MHz != 0.0:
+            return True
+        if self.g_tensor is not None:
+            gx, gy, gz = self.g_tensor
+            if abs(gx - gy) > 1e-6 or abs(gy - gz) > 1e-6:
+                return True
+        for n in self.nuclei:
+            if n.A_tensor_mT is not None:
+                ax, ay, az = n.A_tensor_mT
+                if abs(ax - ay) > 1e-9 or abs(ay - az) > 1e-9:
+                    return True
+        return False
+
+    def g_principal(self) -> tuple[float, float, float]:
+        if self.g_tensor is not None:
+            return tuple(float(g) for g in self.g_tensor)  # type: ignore[return-value]
+        return (float(self.g), float(self.g), float(self.g))
 
     def clone(self) -> "SpinComponent":
         return deepcopy(self)
