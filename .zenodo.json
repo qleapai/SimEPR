@@ -1,0 +1,26 @@
+{
+  "title": "SimEPR: An Open-Source GUI for General cw-EPR Simulation (Isotropic and Anisotropic), Mixture Fitting, and Publication-Ready Analysis",
+  "description": "SimEPR is an open-source application for the simulation, multi-component fitting, and publication-ready analysis of continuous-wave EPR spectra. It couples a fast analytical engine for isotropic radicals with a general spin-Hamiltonian diagonalisation engine and powder averaging for anisotropic g- and A-tensors, high-spin systems, zero-field splitting, and multifrequency EPR. Includes parameter uncertainties, AIC/BIC model selection, parallel EasySpin export, reference standards, and batch/kinetic processing.",
+  "upload_type": "software",
+  "license": "MIT",
+  "version": "0.2.0",
+  "access_right": "open",
+  "keywords": [
+    "EPR", "ESR", "cw-EPR", "spin Hamiltonian", "powder averaging",
+    "g-tensor", "hyperfine", "zero-field splitting", "high-spin",
+    "multifrequency", "spectral fitting", "spin trapping", "Streamlit"
+  ],
+  "creators": [
+    {
+      "name": "Khan, Md Sakib Hasan",
+      "affiliation": "Research School of Chemistry, The Australian National University; Department of Electrical and Electronic Engineering, Khulna University of Engineering & Technology"
+    }
+  ],
+  "related_identifiers": [
+    {
+      "relation": "isSupplementTo",
+      "identifier": "https://github.com/qleapai/SimEPR",
+      "scheme": "url"
+    }
+  ]
+}

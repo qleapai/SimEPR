@@ -34,18 +34,59 @@ class FitResult:
     n_parameters: int
 
     @property
+    def weight_errors(self) -> dict[str, float]:
+        """Standard error of each component weight, keyed by component id."""
+        errors: dict[str, float] = {}
+        if self.parameters is not None and "std_error" in self.parameters.columns:
+            for _, row in self.parameters.iterrows():
+                if row.get("parameter") == "weight":
+                    errors[str(row.get("component"))] = float(row.get("std_error", float("nan")))
+        return errors
+
+    @property
     def component_fractions(self) -> pd.DataFrame:
         total = sum(max(0.0, w) for w in self.weights.values())
+        errs = self.weight_errors
         rows = []
         for cid, weight in self.weights.items():
+            we = errs.get(cid, float("nan"))
+            # Fraction uncertainty (first-order): treat weight errors as independent.
+            frac = weight / total if total > 0 else 0.0
+            frac_err = (we / total) if (total > 0 and np.isfinite(we)) else float("nan")
             rows.append(
                 {
                     "component": cid,
                     "weight": weight,
-                    "fraction": weight / total if total > 0 else 0.0,
+                    "weight_std_error": we,
+                    "fraction": frac,
+                    "fraction_std_error": frac_err,
                 }
             )
         return pd.DataFrame(rows)
+
+
+def _parameter_std_errors(result, n_data: int) -> np.ndarray:
+    """Standard errors of the fitted parameters from the least-squares Jacobian.
+
+    Covariance C = sigma^2 (J^T J)^{-1} with sigma^2 = RSS / (N - k).  Returns
+    sqrt(diag(C)); entries are NaN where the covariance is undefined (e.g. a
+    parameter that did not influence the residual, or N <= k).
+    """
+    try:
+        jac = np.asarray(result.jac, dtype=float)
+        k = jac.shape[1]
+        dof = max(n_data - k, 1)
+        rss = float(2.0 * result.cost)  # scipy cost = 0.5 * sum(residual^2)
+        sigma2 = rss / dof
+        # Pseudo-inverse of J^T J via SVD for numerical stability.
+        _, s, VT = np.linalg.svd(jac, full_matrices=False)
+        threshold = np.finfo(float).eps * max(jac.shape) * (s[0] if s.size else 0.0)
+        s_inv2 = np.array([1.0 / (sv * sv) if sv > threshold else 0.0 for sv in s])
+        cov = (VT.T * s_inv2) @ VT * sigma2
+        var = np.diag(cov)
+        return np.sqrt(np.clip(var, 0.0, None))
+    except Exception:  # noqa: BLE001
+        return np.full(len(getattr(result, "x", [])), np.nan)
 
 
 def fit_metrics(y: np.ndarray, yhat: np.ndarray, k: int) -> dict[str, float]:
@@ -151,14 +192,20 @@ def fit_spectrum(
     weights, baseline0, baseline1 = _apply_params(components, result.x, spec)
     yhat, curves = simulate_model(field, components, weights, mw_frequency_GHz, baseline0, baseline1, n_orientations=n_orientations)
     residual = y - yhat
+
+    # ── Parameter standard errors from the covariance matrix ──────────────────
+    # cov = sigma^2 (J^T J)^-1, sigma^2 = RSS / (N - k); SE_i = sqrt(cov_ii).
+    std_errors = _parameter_std_errors(result, y.size)
+
     params = []
-    for value, lower, upper, (cid, param, _) in zip(result.x, lo, hi, spec):
+    for value, lower, upper, se, (cid, param, _) in zip(result.x, lo, hi, std_errors, spec):
         hit_bound = (np.isfinite(lower) and abs(value - lower) < 1e-5) or (np.isfinite(upper) and abs(value - upper) < 1e-5)
         params.append(
             {
                 "component": cid,
                 "parameter": param,
                 "value": float(value),
+                "std_error": float(se) if np.isfinite(se) else float("nan"),
                 "lower_bound": lower,
                 "upper_bound": upper,
                 "fitted_or_fixed": "fitted",

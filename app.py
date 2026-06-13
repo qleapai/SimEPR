@@ -34,11 +34,14 @@ from epr_simfit.preprocessing import preprocess_spectrum
 from epr_simfit.report import generate_report_html, generate_report_text
 from epr_simfit.simulator import simulate_model
 from epr_simfit.spin_models import Nucleus, SpinComponent
+from epr_simfit.user_models import components_from_text, components_to_json
 
 
 APP_DIR = Path(__file__).resolve().parent
 WHITE_PAPER = APP_DIR / "docs" / "WHITE_PAPER.md"
 CITATION = APP_DIR / "CITATION.cff"
+CUSTOM_MODEL_DOC = APP_DIR / "docs" / "CUSTOM_MODEL_FORMAT.md"
+REFERENCE_SPECTRA_DOC = APP_DIR / "docs" / "REFERENCE_SPECTRA.md"
 LOGO     = APP_DIR / "assets" / "logo.svg"
 LOGO_BANNER = APP_DIR / "assets" / "logo_banner.svg"
 
@@ -211,6 +214,13 @@ with st.sidebar:
             "organic radical",
             "nitroxide/spin label",
             "ROS/spin trap",
+            "N2RR / nitrogen reduction",
+            "CO2RR / carbon dioxide reduction",
+            "electrocatalysis",
+            "photocatalysis",
+            "HER / hydrogen evolution",
+            "OER / ORR oxygen electrochemistry",
+            "reference standards / calibration",
             "transition metal",
             "solid defect/broad signal",
         ],
@@ -270,7 +280,7 @@ else:
 if "_pending_field_shift" in st.session_state:
     st.session_state["field_shift_mT"] = st.session_state.pop("_pending_field_shift")
 
-tabs = st.tabs(["Import", "Metadata", "Preprocess", "Model builder", "Fit", "Compare", "Export", "White paper / citation"])
+tabs = st.tabs(["Import", "Metadata", "Preprocess", "Model builder", "Fit", "Compare", "Export", "Batch / kinetics", "References", "White paper / citation"])
 
 with tabs[0]:
     st.subheader("Import")
@@ -461,6 +471,37 @@ with tabs[3]:
     preset = st.selectbox("Preset", preset_names, index=preset_names.index(default_preset) if default_preset in preset_names else 0)
     default_ids = MODEL_PRESETS.get(preset, suggested["suggested_models"][:1])
     st.caption("Custom nuclei syntax: `14N:1.55; 1H:0.30; 63Cu:8.5` where hyperfine values are in mT.")
+
+    with st.expander("Upload custom model library (JSON, YAML, CSV)", expanded=False):
+        st.markdown(
+            "Upload a reusable SimEPR model pack (`.simepr.json`/`.json`), YAML model pack, "
+            "or CSV table. CSV columns can include: `name, component_id, assignment, category, "
+            "g, g_min, g_max, nuclei, linewidth_mT, lw_min, lw_max, eta, weight, spin_S, gx, gy, gz, D_MHz, E_MHz, mode`."
+        )
+        model_upload = st.file_uploader(
+            "Custom model file",
+            type=["json", "simepr", "yaml", "yml", "csv"],
+            key="custom_model_library_upload",
+        )
+        if model_upload is not None:
+            try:
+                uploaded_text_value = model_upload.getvalue().decode("utf-8", errors="replace")
+                uploaded_components, uploaded_meta = components_from_text(uploaded_text_value, model_upload.name)
+                st.session_state["uploaded_model_components"] = uploaded_components
+                st.session_state["uploaded_model_meta"] = uploaded_meta
+                st.success(f"Loaded {len(uploaded_components)} uploaded component(s) from {model_upload.name}.")
+            except Exception as exc:  # noqa: BLE001
+                st.error(f"Could not load custom model library: {exc}")
+        uploaded_components = st.session_state.get("uploaded_model_components", [])
+        uploaded_meta = st.session_state.get("uploaded_model_meta", {})
+        if uploaded_components:
+            st.caption(f"Uploaded model metadata: {uploaded_meta}")
+            st.dataframe(pd.DataFrame([component.to_table_row() for component in uploaded_components]), width="stretch")
+            if st.button("Clear uploaded model library"):
+                st.session_state.pop("uploaded_model_components", None)
+                st.session_state.pop("uploaded_model_meta", None)
+                st.rerun()
+
     custom_default = pd.DataFrame(
         [
             {
@@ -481,15 +522,24 @@ with tabs[3]:
     )
     custom_table = st.data_editor(custom_default, num_rows="dynamic", width="stretch")
     custom_components = custom_components_from_table(custom_table)
-    component_ids = list(default_components().keys()) + [component.component_id for component in custom_components]
+    uploaded_components = st.session_state.get("uploaded_model_components", [])
+    custom_pool = [*uploaded_components, *custom_components]
+    component_ids = list(default_components().keys()) + [component.component_id for component in custom_pool]
     selected_ids = st.multiselect("Components to simulate/fit", component_ids, default=[cid for cid in default_ids if cid in component_ids])
     rows = []
-    all_by_id = {**default_components(), **{component.component_id: component for component in custom_components}}
+    all_by_id = {**default_components(), **{component.component_id: component for component in custom_pool}}
     for cid in selected_ids:
         rows.append(all_by_id[cid].to_table_row())
     edit_cols = ["component ID", "name", "category", "g", "linewidth mT", "eta", "weight", "interpretation", "warning"]
     edited = st.data_editor(pd.DataFrame(rows, columns=edit_cols), disabled=["component ID", "name", "category", "interpretation", "warning"], width="stretch")
-    selected_components = apply_component_edits(selected_ids, edited, custom_components)
+    selected_components = apply_component_edits(selected_ids, edited, custom_pool)
+    if selected_components:
+        st.download_button(
+            "Download selected components as SimEPR model pack",
+            data=components_to_json(selected_components, name=f"{project_title}_{sample_name}_model").encode("utf-8"),
+            file_name="SimEPR_custom_model.simepr.json",
+            mime="application/json",
+        )
 
     # ── Anisotropic / high-spin parameters (tensor g, S, zero-field splitting) ──
     with st.expander("⚛ Anisotropic / high-spin parameters (g-tensor, spin S, zero-field splitting)", expanded=False):
@@ -953,7 +1003,8 @@ with tabs[6]:
                 config=export_context,
                 mw_frequency_GHz=mw_freq,
             )
-            if WHITE_PAPER.exists() or CITATION.exists():
+            extra_docs = [WHITE_PAPER, CITATION, CUSTOM_MODEL_DOC, REFERENCE_SPECTRA_DOC]
+            if any(path.exists() for path in extra_docs):
                 from io import BytesIO
                 from zipfile import ZIP_DEFLATED, ZipFile
 
@@ -965,12 +1016,114 @@ with tabs[6]:
                         zout.writestr("citation/WHITE_PAPER.md", WHITE_PAPER.read_text(encoding="utf-8"))
                     if CITATION.exists():
                         zout.writestr("citation/CITATION.cff", CITATION.read_text(encoding="utf-8"))
+                    if CUSTOM_MODEL_DOC.exists():
+                        zout.writestr("docs/CUSTOM_MODEL_FORMAT.md", CUSTOM_MODEL_DOC.read_text(encoding="utf-8"))
+                    if REFERENCE_SPECTRA_DOC.exists():
+                        zout.writestr("docs/REFERENCE_SPECTRA.md", REFERENCE_SPECTRA_DOC.read_text(encoding="utf-8"))
                 zip_bytes = buf.getvalue()
             st.session_state["export_zip"] = zip_bytes
     st.caption("Export includes fit metrics, model metrics, all plotted datasets as CSV, figures, reports, citation files, EasySpin script, and ORCA templates where a fit is available.")
     st.download_button("Download SimEPR export ZIP", data=st.session_state.get("export_zip", b""), file_name="SimEPR_export.zip", mime="application/zip", disabled="export_zip" not in st.session_state)
 
 with tabs[7]:
+    st.subheader("Batch / kinetics — fixed model across a spectrum series")
+    st.caption(
+        "Apply one fixed model to a time series, catalyst series, potential series, or dose series. "
+        "SimEPR fits every spectrum with the same components and plots component fractions vs your "
+        "ordering coordinate (time, index, potential, etc.) with uncertainty bars."
+    )
+    if not selected_components:
+        st.info("Build a model in the **Model builder** tab first — the batch uses those exact components.")
+    else:
+        st.markdown(f"**Active model:** {', '.join(c.component_id for c in selected_components)}")
+        bc1, bc2, bc3 = st.columns(3)
+        batch_coord_name = bc1.text_input("Coordinate name", value="time (min)")
+        batch_mode = bc2.selectbox("Batch fit mode", ["weights only", "weights + linewidths"], index=0, key="batch_mode")
+        batch_baseline = bc3.selectbox("Baseline", [0, 1], index=0, key="batch_baseline")
+        batch_files = st.file_uploader(
+            "Upload the spectrum series (multiple files)", type=["asc", "txt", "dat", "csv"],
+            accept_multiple_files=True, key="batch_uploader",
+        )
+        st.caption("Coordinate is taken from each file's numeric prefix/suffix if present, otherwise the upload order (0,1,2,...).")
+        if batch_files and st.button("Run batch / kinetics", type="primary"):
+            from epr_simfit.batch import BatchSpectrum, run_batch, kinetic_plot_png
+
+            spectra = []
+            for idx, f in enumerate(batch_files):
+                text = f.getvalue().decode("utf-8", errors="replace")
+                m = re.search(r"([-+]?\d+\.?\d*)", f.name)
+                coord = float(m.group(1)) if m else float(idx)
+                try:
+                    parsed_b = parse_epr_text(text, filename=f.name, mw_frequency_override=mw_freq)
+                    prep_b = preprocess_spectrum(parsed_b.dataframe["Field_mT"], parsed_b.dataframe["Intensity_raw"])
+                    spectra.append(BatchSpectrum(label=f.name, coordinate=coord,
+                                                 field_mT=prep_b.field_mT, intensity=prep_b.processed))
+                except Exception as exc:  # noqa: BLE001
+                    st.warning(f"Skipped {f.name}: {exc}")
+            if spectra:
+                with st.spinner(f"Fitting {len(spectra)} spectra with the fixed model..."):
+                    result = run_batch(
+                        spectra, selected_components, mw_frequency_GHz=mw_freq,
+                        mode=batch_mode, baseline_order=int(batch_baseline),
+                        coordinate_name=batch_coord_name,
+                        n_orientations=st.session_state.get("n_orient", 600),
+                    )
+                st.session_state["batch_result"] = result
+        result = st.session_state.get("batch_result")
+        if result is not None:
+            st.markdown("**Component fractions vs coordinate**")
+            from epr_simfit.batch import kinetic_plot_png
+            st.image(kinetic_plot_png(result, title="SimEPR component kinetics"), use_container_width=True)
+            st.markdown("**Fraction table**")
+            st.dataframe(result.fractions, use_container_width=True)
+            st.markdown("**Per-spectrum fit metrics**")
+            st.dataframe(result.metrics, use_container_width=True)
+            kc1, kc2, kc3 = st.columns(3)
+            kc1.download_button("⬇ Fractions (CSV)", data=result.fractions.to_csv(index=False).encode(),
+                                file_name="SimEPR_batch_fractions.csv", mime="text/csv")
+            kc2.download_button("⬇ Weights (CSV)", data=result.weights.to_csv(index=False).encode(),
+                                file_name="SimEPR_batch_weights.csv", mime="text/csv")
+            kc3.download_button("⬇ Metrics (CSV)", data=result.metrics.to_csv(index=False).encode(),
+                                file_name="SimEPR_batch_metrics.csv", mime="text/csv")
+            st.download_button("⬇ Kinetic plot (PNG)", data=kinetic_plot_png(result),
+                               file_name="SimEPR_kinetics.png", mime="image/png")
+
+with tabs[8]:
+    st.subheader("Reference standards — validate against known systems")
+    st.caption(
+        "Literature reference standards (DPPH, TEMPO, Mn(II), Cu(II), vanadyl, PBN-OH). "
+        "Simulate in SimEPR and download a parallel EasySpin script to cross-check."
+    )
+    from epr_simfit.reference_library import reference_standards, easyspin_reference_script
+
+    refs = reference_standards()
+    ref_key = st.selectbox("Reference standard", list(refs.keys()),
+                           format_func=lambda k: refs[k].name)
+    ref = refs[ref_key]
+    st.markdown(f"**{ref.name}** — {ref.note}")
+    rcomp = ref.component
+    rc1, rc2, rc3 = st.columns(3)
+    rc1.metric("g (avg)", f"{(sum(rcomp.g_principal())/3):.5f}")
+    rc2.metric("Spin S", f"{rcomp.spin_S:g}")
+    rc3.metric("Engine", "powder" if rcomp.is_anisotropic() else "isotropic")
+    rfield = np.linspace(ref.field_window_mT[0], ref.field_window_mT[1], 1500)
+    with st.spinner("Simulating reference standard..."):
+        rsim, _ = simulate_model(rfield, [rcomp], {rcomp.component_id: 1.0},
+                                 mw_frequency_GHz=ref.mw_freq_GHz,
+                                 n_orientations=st.session_state.get("n_orient", 1000))
+    st.plotly_chart(spectrum_figure(rfield, {ref.name: rsim}, f"{ref.name} (SimEPR simulation)"),
+                    use_container_width=True)
+    es = easyspin_reference_script(ref)
+    st.markdown("**Parallel EasySpin script**")
+    st.code(es, language="matlab")
+    ec1, ec2 = st.columns(2)
+    ec1.download_button("⬇ EasySpin script (.m)", data=es.encode(),
+                        file_name=f"EasySpin_{ref_key}.m", mime="text/plain")
+    ec2.download_button("⬇ Reference spectrum (CSV)",
+                        data=pd.DataFrame({"Field_mT": rfield, "Intensity": rsim}).to_csv(index=False).encode(),
+                        file_name=f"SimEPR_reference_{ref_key}.csv", mime="text/csv")
+
+with tabs[9]:
     st.subheader("White paper / citation")
     st.write(ABOUT_TEXT)
     st.markdown("**Developer**")
@@ -983,3 +1136,9 @@ with tabs[7]:
         citation = CITATION.read_text(encoding="utf-8")
         st.download_button("Download CITATION.cff", data=citation, file_name="CITATION.cff", mime="text/plain")
         st.code(citation, language="yaml")
+    if CUSTOM_MODEL_DOC.exists():
+        custom_doc = CUSTOM_MODEL_DOC.read_text(encoding="utf-8")
+        st.download_button("Download custom model format guide", data=custom_doc, file_name="CUSTOM_MODEL_FORMAT.md", mime="text/markdown")
+    if REFERENCE_SPECTRA_DOC.exists():
+        reference_doc = REFERENCE_SPECTRA_DOC.read_text(encoding="utf-8")
+        st.download_button("Download reference spectra plan", data=reference_doc, file_name="REFERENCE_SPECTRA.md", mime="text/markdown")

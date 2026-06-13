@@ -43,6 +43,18 @@ The present version is not a full anisotropic EPR tensor simulator. It does not 
 - pulsed EPR;
 - spin-Hamiltonian refinement beyond isotropic screening.
 
+## Development Roadmap
+
+Several developments would strengthen SimEPR as a research software platform. First, a DOI-linked release archive should be created for the exact manuscript version. Second, experimental reference spectra should be included for TEMPO, DPPH, Mn(II), Cu(II), vanadyl and representative PBN adducts, with parallel fits in SimEPR and EasySpin. Third, uncertainty estimates should be added to exported fit tables. Fourth, the EasySpin export could be expanded to tensor and powder models rather than only simple isotropic mixture scripts. Fifth, a batch-processing mode could apply a fixed model to time-series or catalyst-series spectra and export kinetic plots. Sixth, tests should cover the powder engine more extensively, including convergence with orientation count and comparison against analytical or EasySpin reference cases.
+
+The current public version already takes initial steps toward these goals by exporting first-pass least-squares standard errors for fitted parameters, supporting uploaded user model libraries, and including general-purpose powder/anisotropic components. The remaining roadmap items should be versioned, benchmarked, and archived with a DOI-linked release before being cited as validated reference functionality.
+
+## Uploaded Custom Models
+
+SimEPR accepts user-uploaded custom model libraries in JSON, YAML, or CSV format. Custom models can define arbitrary component names, assignments, categories, g values, linewidths, weights, nuclei, hyperfine couplings, g-tensor principal values, electron spin S, zero-field splitting parameters D and E, and whether the component should use the isotropic or powder engine.
+
+Custom model upload is intended to make SimEPR extensible across chemistry areas such as N2 reduction reaction (N2RR), CO2 reduction reaction (CO2RR), HER, OER, ORR, photocatalysis, organic radical chemistry, spin-labelling, transition-metal spectroscopy, and solid-state defect spectroscopy. Mechanistic component names are candidate assignments and must be validated experimentally.
+
 ## Recommended Citation Text
 
 If SimEPR is used in a publication, users may cite it as:

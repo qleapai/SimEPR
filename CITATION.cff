@@ -1,19 +1,49 @@
 cff-version: 1.2.0
-message: "If you use SimEPR, please cite this software and the accompanying white paper."
-title: "SimEPR: A Public General-Purpose GUI for High-Field cw-EPR Simulation, Fitting, and Transparent Export"
-version: "0.1.0"
-date-released: "2026-06-05"
+message: "If you use SimEPR, please cite this software and the accompanying paper."
+title: "SimEPR: An Open-Source GUI for General cw-EPR Simulation (Isotropic and Anisotropic), Mixture Fitting, and Publication-Ready Analysis"
+version: "0.2.0"
+date-released: "2026-06-14"
 authors:
   - family-names: "Khan"
     given-names: "Md Sakib Hasan"
     affiliation: "Research School of Chemistry, The Australian National University; Department of Electrical and Electronic Engineering, Khulna University of Engineering & Technology"
+    orcid: "https://orcid.org/0000-0000-0000-0000"
 license: "MIT"
+repository-code: "https://github.com/qleapai/SimEPR"
+url: "https://simepr.streamlit.app"
 keywords:
   - EPR
   - ESR
   - cw-EPR
+  - spin Hamiltonian
+  - powder averaging
+  - g-tensor
+  - hyperfine
+  - zero-field splitting
+  - high-spin
+  - multifrequency
   - spectral fitting
   - spin trapping
   - radical chemistry
   - Streamlit
-abstract: "SimEPR is a public-distributable high-field cw-EPR simulation and fitting GUI for importing spectra, fitting isotropic mixture models, comparing candidate components, and exporting all fitted metrics and plotted data."
+abstract: >-
+  SimEPR is an open-source application for the simulation, multi-component
+  fitting, and publication-ready analysis of continuous-wave EPR spectra. It
+  couples a fast analytical engine for isotropic radicals with a general
+  spin-Hamiltonian diagonalisation engine with powder averaging for anisotropic
+  g- and A-tensors, high-spin systems, zero-field splitting, and multifrequency
+  EPR. Fitting uses bounded least squares with parameter uncertainties and
+  AIC/BIC model selection, and the software exports parallel EasySpin scripts,
+  reference standards, and batch/kinetic analyses.
+identifiers:
+  - type: doi
+    value: "10.5281/zenodo.0000000"
+    description: "Zenodo concept DOI (replace with the minted DOI for the archived release)."
+preferred-citation:
+  type: article
+  title: "SimEPR: An Open-Source Python Application for General Continuous-Wave EPR Simulation, Mixture Fitting, and Publication-Ready Analysis"
+  year: 2026
+  authors:
+    - family-names: "Khan"
+      given-names: "Md Sakib Hasan"
+      affiliation: "The Australian National University"

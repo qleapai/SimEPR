@@ -65,3 +65,11 @@ If SimEPR helps your work, cite the bundled white paper and software citation:
 - `CITATION.cff`
 
 Both are also downloadable from the GUI's White paper / citation tab.
+
+## Custom Models
+
+Users can upload custom model libraries in JSON, YAML, or CSV format from the Model builder tab. See `docs/CUSTOM_MODEL_FORMAT.md`.
+
+## Roadmap
+
+The white paper now includes a research-software roadmap covering DOI-linked release archives, curated reference spectra, uncertainty estimates, richer EasySpin tensor/powder export, time-series/catalyst-series batch processing, and powder-engine validation against reference cases.
